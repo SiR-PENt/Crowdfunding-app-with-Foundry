@@ -13,7 +13,7 @@ pragma solidity ^0.8.20;
  * Refunds to donors if the goal is not met.
  */ 
 
-contract CrowdFunding {
+contract Crowdfunding {
 
     struct Campaign {
         address owner;
@@ -36,9 +36,9 @@ contract CrowdFunding {
 
     function createCampaigns(address _owner, string memory _title, string memory _description, 
     uint256 _target, uint256 _deadline, string memory _image) public returns (uint256) {
-       Campaign storage campaign = campaigns[numberOfCampaigns];
+       Campaign storage campaign = campaigns[numberOfCampaigns]; // adding value to the mapping
 
-       require(campaign.deadline < block.timestamp, "The deadline should be a date in the future");
+       require(_deadline > block.timestamp, "The deadline should be a date in the future");
        
        campaign.owner = _owner;
        campaign.title = _title;
@@ -48,7 +48,7 @@ contract CrowdFunding {
        campaign.amountCollected = 0;
        campaign.image = _image;
 
-       numberOfCampaigns++;
+       numberOfCampaigns++; // after a campaign has been added, we want to increment it
        return numberOfCampaigns - 1; // this is going to be the index of the most recent campaign
     }
 
@@ -64,8 +64,10 @@ contract CrowdFunding {
        if(callSuccess) campaign.amountCollected = campaign.amountCollected + amount;
     }
 
-    function getDonators(uint256 _id) view public returns (address[] memory, uint256[] memory) {
-       return (campaigns[_id].donators, campaigns[_id].donations);
+    // getter functions
+
+    function getDonators(uint256 _campaignId) view public returns (address[] memory) {
+       return campaigns[_campaignId].donators;
     }
 
     function getCampaigns() public view returns (Campaign[] memory) {
@@ -76,5 +78,9 @@ contract CrowdFunding {
        }
        return allCampaigns;
     }
+
+    function getCampaign(uint256 _campaignId) public view returns (Campaign memory) {
+       return campaigns[_campaignId];
+    } 
   
 }
