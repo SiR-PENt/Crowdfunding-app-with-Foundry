@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 
 import { Test, console } from "forge-std/Test.sol";
 import { Crowdfunding } from "../src/Crowdfunding.sol";
-import { DeployCrowdFunding } from "../script/DeployCrowdfunding.s.sol";
+import { DeployCrowdfunding } from "../script/DeployCrowdfunding.s.sol";
 
 contract CrowdfundingTest is Test {
     Crowdfunding crowdFunding;
@@ -19,7 +19,7 @@ contract CrowdfundingTest is Test {
     string constant IMAGE = "image_link";
 
     function setUp() public {
-        DeployCrowdFunding deployCrowdFunding = new DeployCrowdFunding();
+        DeployCrowdfunding deployCrowdFunding = new DeployCrowdfunding();
         crowdFunding = deployCrowdFunding.run();
         vm.deal(owner, 10 ether);
         vm.deal(donor1, 5 ether);
