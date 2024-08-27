@@ -161,7 +161,7 @@ contract Crowdfunding is ReentrancyGuard {
 
    function getCampaigns() public view returns (Campaign[] memory) {
        Campaign[] memory allCampaigns = new Campaign[](campaignId); // create a new array of length campaignId
-
+       require(allCampaigns.length > 0, "No campaign has been created yet");
        for(uint i = 0; i < campaignId; i++) {
           allCampaigns[i] = campaigns[i];
        }
