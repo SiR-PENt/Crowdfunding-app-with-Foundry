@@ -3,7 +3,7 @@
 pragma solidity ^0.8.20;
 
 //  import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 /**
  * @title Crowdfunding App
  * @author Olasunkanmi Balogun 
@@ -13,9 +13,15 @@ pragma solidity ^0.8.20;
  * Refunds to donors if the goal is not met.
  */ 
 
-contract Crowdfunding {
 
-    struct Campaign {
+contract Crowdfunding is ReentrancyGuard {
+
+   error Crowdfunding__CantSendZeroEth();
+   error Crowdfunding__DeadlineMustBeInTheFuture();
+   error Crowdfunding__CampaignDeadlineElapsed();
+   error Crowdfunding__TargetMetForCampaign();
+
+   struct Campaign {
         address owner;
         string title;
         string description;
@@ -29,16 +35,21 @@ contract Crowdfunding {
 
     mapping(uint256 => Campaign) public campaigns;
 
-    uint256 public numberOfCampaigns = 0;
+    uint256 public campaignId = 0;
 
-    //  what did we do here?
-    // 
+   //  events
+   event CreatedCampaign (address indexed owner, uint256 campignId);
+   event MadeDonation (address indexed donor, uint256 indexed amountDonated, uint256 campaignId);
 
-    function createCampaigns(address _owner, string memory _title, string memory _description, 
+   //  what did we do here?
+   // 
+   function createCampaigns(address _owner, string memory _title, string memory _description, 
     uint256 _target, uint256 _deadline, string memory _image) public returns (uint256) {
-       Campaign storage campaign = campaigns[numberOfCampaigns]; // adding value to the mapping
+       Campaign storage campaign = campaigns[campaignId]; // adding value to the mapping
 
-       require(_deadline > block.timestamp, "The deadline should be a date in the future");
+       if(_deadline > block.timestamp) {
+         revert Crowdfunding__DeadlineMustBeInTheFuture();
+       } 
        
        campaign.owner = _owner;
        campaign.title = _title;
@@ -48,32 +59,79 @@ contract Crowdfunding {
        campaign.amountCollected = 0;
        campaign.image = _image;
 
-       numberOfCampaigns++; // after a campaign has been added, we want to increment it
-       return numberOfCampaigns - 1; // this is going to be the index of the most recent campaign
+       campaignId++; // after a campaign has been added, we want to increment it
+       emit CreatedCampaign(_owner, campaignId);
+       return campaignId - 1; // this is going to be the index of the most recent campaign
     }
 
-    function donateToCampaign(uint256 _id) public payable {
-       uint256 amount = msg.value;
-       Campaign storage campaign = campaigns[_id];
+    function donateToCampaign(uint256 _campaignId) public payable nonReentrant {
+      // revert if donor isnt sending anything
+      if(msg.value <= 0) {
+         revert Crowdfunding__CantSendZeroEth();
+      }
+      //  revert if deadline is in the past
+      if(campaigns[_campaignId].deadline > block.timestamp) {
+         revert Crowdfunding__CampaignDeadlineElapsed();
+      } 
+       // revert if target is met 
+      if(campaigns[_campaignId].amountCollected == campaigns[_campaignId].target) {
+         revert Crowdfunding__TargetMetForCampaign();
+      } 
 
-       campaign.donators.push(msg.sender);
-       campaign.donations.push(amount);
+      Campaign storage campaign = campaigns[_campaignId];
 
-       (bool callSuccess, ) = payable(campaign.owner).call{value: amount}("");
-       
-       if(callSuccess) campaign.amountCollected = campaign.amountCollected + amount;
+      uint256 remainingFundsNeeded = campaign.target - campaign.amountCollected;
+       // Handle contributions based on the remaining funds needed
+       // next code block optimized for CEI
+      if (msg.value <= remainingFundsNeeded) {
+            campaign.amountCollected += msg.value;
+            campaign.donators.push(msg.sender);
+            campaign.donations.push(msg.value);
+            (bool callSuccess, ) = payable(campaign.owner).call{value: msg.value}("");
+            // reupdate state variables
+            if (!callSuccess) {
+            campaign.amountCollected -= msg.value;
+            campaign.donators.pop();
+            campaign.donations.pop();
+            }
+            emit MadeDonation(msg.sender, msg.value, _campaignId);
+      } else {
+         // Handle excess contributions and refunds
+         uint excessAmount = msg.value - remainingFundsNeeded;
+         uint amountToDonate = msg.value - excessAmount;
+
+         // Refund the excess amount to the contributor
+         payable(msg.sender).transfer(excessAmount);
+
+         // Update the total contributions with the amount that was supposed to be donated
+         campaign.amountCollected += amountToDonate;
+         campaign.donators.push(msg.sender);
+         campaign.donations.push(amountToDonate);
+         (bool callSuccess, ) = payable(campaign.owner).call{value: amountToDonate}("");
+         if(callSuccess) emit MadeDonation(msg.sender, msg.value, _campaignId);
+      }
+    }
+
+    // special functions
+
+    fallback() external payable {
+        donateToCampaign(campaignId);
+    }
+
+    receive() external payable {
+      donateToCampaign(campaignId);
     }
 
     // getter functions
 
-    function getDonators(uint256 _campaignId) view public returns (address[] memory) {
+   function getDonators(uint256 _campaignId) view public returns (address[] memory) {
        return campaigns[_campaignId].donators;
     }
 
     function getCampaigns() public view returns (Campaign[] memory) {
-       Campaign[] memory allCampaigns = new Campaign[](numberOfCampaigns); // create a new array of length numberOfCampaigns
+       Campaign[] memory allCampaigns = new Campaign[](campaignId); // create a new array of length campaignId
 
-       for(uint i = 0; i < numberOfCampaigns; i++) {
+       for(uint i = 0; i < campaignId; i++) {
           allCampaigns[i] = campaigns[i];
        }
        return allCampaigns;

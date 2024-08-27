@@ -26,9 +26,7 @@ contract CrowdfundingTest is Test {
         vm.deal(donor2, 5 ether);
     }
 
-    // modifier initializeCampaign
-
-    function testCampaignCreationRevertsAfterDeadlinePasses() public {
+    function testCampaignCreationRevertsIfDeadlineIsNotInTheFuture() public {
         vm.warp(block.timestamp + deadline + 1);
         vm.expectRevert();
         vm.prank(owner);
@@ -52,6 +50,19 @@ contract CrowdfundingTest is Test {
         assertEq(campaignTarget, TARGET);
         assertEq(campaignDeadline, deadline);
         assertEq(campaignAmountCollected, 0);
+    }
+    // test donate to campaign
+
+    function testDonationRevertsWhenDeadlinePasses() public {
+        vm.prank(owner);
+        uint256 campaignId = crowdFunding.createCampaigns(owner, TITLE, DESCRIPTION, TARGET, deadline, IMAGE);
+
+        vm.warp(block.timestamp + deadline + 1);
+        vm.expectRevert();
+
+        // Donate to the campaign
+        vm.prank(donor1);
+        crowdFunding.donateToCampaign{value: 2 ether}(campaignId);
     }
 
     function testDonateToCampaign() public {
