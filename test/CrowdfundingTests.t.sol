@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.20;
 
-import { Test, console } from "forge-std/Test.sol";
-import { Crowdfunding } from "../src/Crowdfunding.sol";
-import { DeployCrowdfunding } from "../script/DeployCrowdfunding.s.sol";
+import {Test, console} from "forge-std/Test.sol";
+import {Crowdfunding} from "../src/Crowdfunding.sol";
+import {DeployCrowdfunding} from "../script/DeployCrowdfunding.s.sol";
 
 contract CrowdfundingTest is Test {
 
@@ -12,13 +12,16 @@ contract CrowdfundingTest is Test {
     address owner = makeAddr("user");
     address donor1 = makeAddr("donor1");
     address donor2 = makeAddr("donor2");
-     
+
     uint256 campaignId;
     string constant TITLE = "Help Fund My Project";
     string constant DESCRIPTION = "A project that will change the world!";
     uint256 constant TARGET = 5 ether;
     uint256 deadline = block.timestamp + 7 days;
     string constant IMAGE = "image_link";
+
+    event CreatedCampaign(address indexed owner, uint256 campaignId);
+    event MadeDonation(address indexed donor, uint256 indexed amountDonated, uint256 indexed campaignId);
 
     function setUp() public {
         DeployCrowdfunding deployCrowdFunding = new DeployCrowdfunding();
@@ -32,12 +35,12 @@ contract CrowdfundingTest is Test {
         vm.warp(block.timestamp + deadline + 1);
         vm.expectRevert(Crowdfunding.Crowdfunding__DeadlineMustBeInTheFuture.selector);
         vm.prank(owner);
-        crowdFunding.createCampaigns(TITLE, DESCRIPTION, TARGET, deadline, IMAGE);
+        crowdFunding.createCampaigns(owner, TITLE, DESCRIPTION, TARGET, deadline, IMAGE);
     }
 
     modifier createCampaign() {
         vm.prank(owner);
-        campaignId = crowdFunding.createCampaigns(TITLE, DESCRIPTION, TARGET, deadline, IMAGE);
+        campaignId = crowdFunding.createCampaigns(owner, TITLE, DESCRIPTION, TARGET, deadline, IMAGE);
         _;
     }
 
@@ -55,6 +58,7 @@ contract CrowdfundingTest is Test {
         assertEq(campaignDeadline, deadline);
         assertEq(campaignAmountCollected, 0);
     }
+
     // test donate to campaign
     function testDonationRevertsWhenZeroEthIsDonated() public createCampaign {
         vm.expectRevert(Crowdfunding.Crowdfunding__CantSendZeroEth.selector);
@@ -122,17 +126,19 @@ contract CrowdfundingTest is Test {
     function testGetCampaigns() public {
         // Create multiple campaigns
         vm.prank(owner);
-        crowdFunding.createCampaigns("Campaign 1", "First campaign", 3 ether, block.timestamp + 5 days, "image_1");
+        crowdFunding.createCampaigns(owner, "Campaign 1", "First campaign", 3 ether, block.timestamp + 5 days, "image_1");
 
-        vm.prank(owner);
-        crowdFunding.createCampaigns("Campaign 2", "Second campaign", 4 ether, block.timestamp + 6 days, "image_2");
+        address owner2 = makeAddr("owner2");
+        vm.prank(owner2);
+        crowdFunding.createCampaigns(owner, "Campaign 2", "Second campaign", 4 ether, block.timestamp + 6 days, "image_2");
 
-        vm.prank(owner);
-        crowdFunding.createCampaigns("Campaign 3", "Third campaign", 5 ether, block.timestamp + 7 days, "image_3");
+        address owner3 = makeAddr("owner3");
+        vm.prank(owner3);
+        crowdFunding.createCampaigns(owner, "Campaign 3", "Third campaign", 5 ether, block.timestamp + 7 days, "image_3");
 
         // Get all campaigns
         Crowdfunding.Campaign[] memory campaigns = crowdFunding.getCampaigns();
-        
+
         assertEq(campaigns.length, 3);
     }
 }
