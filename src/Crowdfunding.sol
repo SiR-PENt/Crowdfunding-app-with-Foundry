@@ -56,13 +56,12 @@ contract Crowdfunding is ReentrancyGuard {
 
     //  what did we do here?
     //
-    function createCampaigns(
+    function createCampaign(
         address _owner,
         string memory _title,
         string memory _description,
         uint256 _target,
-        uint256 _deadline,
-        string memory _image
+        uint256 _deadline
     ) public returns (uint256) {
         Campaign storage campaign = campaigns[campaignId]; // adding a key to the mapping
 
@@ -76,7 +75,6 @@ contract Crowdfunding is ReentrancyGuard {
         campaign.target = _target;
         campaign.deadline = _deadline;
         campaign.amountCollected = 0;
-        campaign.image = _image;
 
         campaignId++; // after a campaign has been added, we want to increment it
         return campaignId - 1; // this is going to be the index of the campaign that was just created

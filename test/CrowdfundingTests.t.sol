@@ -18,10 +18,6 @@ contract CrowdfundingTest is Test {
     string constant DESCRIPTION = "A project that will change the world!";
     uint256 constant TARGET = 5 ether;
     uint256 deadline = block.timestamp + 7 days;
-    string constant IMAGE = "image_link";
-
-    event CreatedCampaign(address indexed owner, uint256 campaignId);
-    event MadeDonation(address indexed donor, uint256 indexed amountDonated, uint256 indexed campaignId);
 
     function setUp() public {
         DeployCrowdfunding deployCrowdFunding = new DeployCrowdfunding();
@@ -35,12 +31,12 @@ contract CrowdfundingTest is Test {
         vm.warp(block.timestamp + deadline + 1);
         vm.expectRevert(Crowdfunding.Crowdfunding__DeadlineMustBeInTheFuture.selector);
         vm.prank(owner);
-        crowdFunding.createCampaigns(owner, TITLE, DESCRIPTION, TARGET, deadline, IMAGE);
+        crowdFunding.createCampaign(owner, TITLE, DESCRIPTION, TARGET, deadline);
     }
 
     modifier createCampaign() {
         vm.prank(owner);
-        campaignId = crowdFunding.createCampaigns(owner, TITLE, DESCRIPTION, TARGET, deadline, IMAGE);
+        campaignId = crowdFunding.createCampaign(owner, TITLE, DESCRIPTION, TARGET, deadline);
         _;
     }
 
@@ -126,15 +122,15 @@ contract CrowdfundingTest is Test {
     function testGetCampaigns() public {
         // Create multiple campaigns
         vm.prank(owner);
-        crowdFunding.createCampaigns(owner, "Campaign 1", "First campaign", 3 ether, block.timestamp + 5 days, "image_1");
+        crowdFunding.createCampaign(owner, "Campaign 1", "First campaign", 3 ether, block.timestamp + 5 days);
 
         address owner2 = makeAddr("owner2");
         vm.prank(owner2);
-        crowdFunding.createCampaigns(owner, "Campaign 2", "Second campaign", 4 ether, block.timestamp + 6 days, "image_2");
+        crowdFunding.createCampaign(owner, "Campaign 2", "Second campaign", 4 ether, block.timestamp + 6 days);
 
         address owner3 = makeAddr("owner3");
         vm.prank(owner3);
-        crowdFunding.createCampaigns(owner, "Campaign 3", "Third campaign", 5 ether, block.timestamp + 7 days, "image_3");
+        crowdFunding.createCampaign(owner, "Campaign 3", "Third campaign", 5 ether, block.timestamp + 7 days);
 
         // Get all campaigns
         Crowdfunding.Campaign[] memory campaigns = crowdFunding.getCampaigns();
@@ -142,3 +138,4 @@ contract CrowdfundingTest is Test {
         assertEq(campaigns.length, 3);
     }
 }
+
